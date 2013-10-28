@@ -25,14 +25,19 @@
 // // Settings["KEY"] == os.GetEnv(ENV_KEY). Defaults to DEFAULT if env variable isn't set.
 //
 // KEY			"ENV:"ENV_KEY	DEFAULT
+//
+// // Lines beginning with octothorpe are comments
+// "#" COMMENT
 package envcfg
 
 import (
 	"bufio"
 	"errors"
 	"io"
+	"fmt"
 	"os"
 	"regexp"
+	"strings"
 )
 
 // regex for splitting a line by one or more spaces
@@ -40,18 +45,24 @@ var re_spaces *regexp.Regexp = regexp.MustCompile("\\s+")
 var max_tokens int = 3
 
 var ENV_PREFIX string = "ENV:"
+var COMMENT_PREFIX string = "#"
 
 // value literals
 var TRUE string = "1"
 
 // Read settings and store them in a Settings map
-func ReadSettings(reader io.Reader) (*map[string]string, error) {
+func ReadSettings(reader io.Reader) (map[string]string, error) {
 	settings := make(map[string]string)
 	lineScanner := bufio.NewScanner(reader)
 
 	// each line is a settings value
 	for lineScanner.Scan() {
-		line := lineScanner.Text()
+		line := strings.Trim(lineScanner.Text(), " \t")
+
+		// skip comments
+		if strings.HasPrefix(line, COMMENT_PREFIX) {
+			continue
+		}
 
 		// split line by spaces
 		tokens := re_spaces.Split(line, max_tokens)
@@ -72,7 +83,7 @@ func ReadSettings(reader io.Reader) (*map[string]string, error) {
 			// empty string indicates undefined env variable.  Config specifies
 			// no default,  so it's required and we should throw an error
 			if envValue == "" && prefixPresent {
-				err := errors.New("Environment variable is undefined:\t" + value)
+				err := errors.New("Environment variable is undefined: " + value)
 				return nil, err
 			}
 
@@ -93,7 +104,7 @@ func ReadSettings(reader io.Reader) (*map[string]string, error) {
 			// if nil, then there wasn't a prefix, meaning it was an illegal
 			// triple
 			if !prefixPresent && envValue == "" {
-				err := errors.New("Default provided for a literal string:\t" + line)
+				err := errors.New(fmt.Sprintf("Default provided for a literal string: %s (%v)", line, tokens))
 				return nil, err
 			} else if envValue == "" {
 				envValue = valueDefault
@@ -103,7 +114,7 @@ func ReadSettings(reader io.Reader) (*map[string]string, error) {
 		}
 	}
 
-	return &settings, nil
+	return settings, nil
 }
 
 // Get an env variable if the key starts with a prefix.  Returns the extracted 
