@@ -11,10 +11,10 @@ import (
 	"math/rand"
 	"os"
 	"testing"
-	"bytes"
+	"io/ioutil"
 	"fmt"
 	"github.com/axelmagn/envcfg"
-)
+);
 
 var setValue string = "TEST"
 
@@ -75,6 +75,8 @@ func TestExtractEnvIfPrefix_NoPrefix(t *testing.T)	{
 // we use this as the initializer for the settings variable
 // I don't know if that's good practice or not.
 func TestReadSettings(t *testing.T) {
+	var err error
+	var cfgFile *os.File
 	// Create sample settings data
 	rawSettings := `
 	# Key flag
@@ -92,14 +94,34 @@ func TestReadSettings(t *testing.T) {
 	# Env Key Default Where Env Variable is not defined
 	EKUKEY	ENV:ENVCFG_TEST_ENV_UNDEFINED	eku_default
 	`
+
+	// write sample to temp file
+	cfgFile, err = ioutil.TempFile(os.TempDir(), "envcfg_test_config.ecfg")
+	if err != nil {
+		t.Errorf("Error while creating temporary settings file: %s", err.Error())
+	}
+	_, err = cfgFile.WriteString(rawSettings)
+	if err != nil {
+		t.Errorf("Error while writing settings to temp file: %s", err.Error())
+	}
+	err = cfgFile.Close()
+	if err != nil {
+		t.Errorf("Error while closing temp file: %s", err.Error())
+	}
+	cfgFileName := cfgFile.Name()
+
+	// open sample file 
+	cfgFile, err = os.Open(cfgFileName)
+	if err != nil {
+		t.Errorf("Error while opening temp settings file for reading: %s", err.Error())
+	}
+
 	// configure ENV for different settings
 	os.Setenv("ENVCFG_TEST_ENV_KEY_VALUE", "ek_value")
 	os.Setenv("ENVCFG_TEST_ENV_DEFINED", "ekd_value")
 
 	// read settings
-	reader := bytes.NewBufferString(rawSettings)
-	var err error
-	settings, err = envcfg.ReadSettings(reader)
+	settings, err = envcfg.ReadSettings(cfgFile)
 	if err != nil {
 		t.Errorf("ReadSettings failed with error: %s", err.Error())
 	}
