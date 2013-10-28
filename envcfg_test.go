@@ -1,47 +1,63 @@
 package envcfg_test
 
 import (
-	"testing"
-	"os"
-	"math/rand"
-	"hash"
-	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
-    "encoding/binary"
+	"math/rand"
+	"os"
+	"testing"
+	"github.com/axelmagn/envcfg"
 )
 
-// set envKey as a random alphanumeric string
-var randInt int64
-var randBytes []byte
-var envKey string
-var setValue string
-var setupDone bool
+var setValue string = "TEST"
 
-func Setup() {
-    if !setupDone {
-        randInt = rand.Int63n()
-        randBytes = make([]byte, 8)
-        binary.PutVarint(randBytes, randInt)
-        envKey = envcfg.ENV_PREFIX + hex.EncodeToString(binary.rand.Int63n())
-        setValue = "TEST"
-    }
+func randString() string {
+	randInt := rand.Int63()
+	randBytes := make([]byte, 10)
+	binary.PutVarint(randBytes, randInt)
+	return hex.EncodeToString(randBytes)
+}
 
-    setupDone = true
+func TestSetenvControl(t *testing.T) {
+	envKey := envcfg.ENV_PREFIX + randString()
+	err := os.Setenv(envKey, setValue)
+	if err != nil {
+		t.Errorf("Error while setting Env Variable %s to %s: %s", envKey, setValue, err.Error())
+	}
+	envValue := os.Getenv(envKey)
+	if envValue != setValue {
+		t.Errorf("Extracted Env Variable %s had value %s.  Expected %s.", envKey, envValue, setValue)
+	}
+
 }
 
 func TestExtractEnvIfPrefix(t *testing.T) {
-    Setup()
 	// defined env variable
-	os.SetEnv(envKey, setValue)
-	envValue := envcfg.ExtractEnvIfPrefix(envKey, envcfg.ENV_PREFIX)
-	if envValue != setValue {
-		t.Errorf("Extracted Env Variable %s had value %s.  Expected %s", envKey, envValue, setValue)
+	envKey := envcfg.ENV_PREFIX + randString()
+	err := os.Setenv(envKey[len(envcfg.ENV_PREFIX):], setValue)
+	if err != nil {
+		t.Errorf("Error while setting Env Variable %s to %s: %s", envKey, setValue, err.Error())
+	}
+	envValue, prefixPresent := envcfg.ExtractEnvIfPrefix(envKey, envcfg.ENV_PREFIX)
+	if envValue != setValue || prefixPresent != true {
+		t.Errorf("Extracted Env Variable %s had value %s, %b.  Expected %s, %b.", envKey, envValue, prefixPresent, setValue, true)
 	}
 }
 
 func TestExtractEnvIfPrefixUndefinedEnv(t *testing.T) {
-    Setup()
 	// set envKey as a random alphanumeric string
-	envKey := envcfg.ENV_PREFIX + hex.EncodeToString(rand.Int())
-	setValue = "TEST"
+	envKey := envcfg.ENV_PREFIX + randString()
+	envValue, prefixPresent := envcfg.ExtractEnvIfPrefix(envKey, envcfg.ENV_PREFIX)
+	if envValue != "" || prefixPresent != true {
+		t.Errorf("Extracted Env Variable %s had value %s.  Expected \"\" for undefined env variable.", envKey, envValue)
+	}
+}
+
+func TestExtractEnvIfPrefixNoPrefix(t *testing.T)	{
+	// set envKey as a random alphanumeric string
+	envKey := randString()
+	envValue, prefixPresent := envcfg.ExtractEnvIfPrefix(envKey, envcfg.ENV_PREFIX)
+	if envValue != "" || prefixPresent != false {
+		t.Errorf("Extracted Env Variable %s had value %s.  Expected nil for absent prefix.", envKey, envValue)
+	}
 }

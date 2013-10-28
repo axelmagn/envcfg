@@ -28,6 +28,7 @@
 package envcfg
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"os"
@@ -43,19 +44,17 @@ var ENV_PREFIX string = "ENV:"
 // value literals
 var TRUE string = "1"
 
-type Settings map[string]string
-
 // Read settings and store them in a Settings map
-func ReadSettings(reader io.Reader) (*Settings, error) {
+func ReadSettings(reader io.Reader) (*map[string]string, error) {
 	settings := make(map[string]string)
-	lineScanner := NewScanner(reader)
+	lineScanner := bufio.NewScanner(reader)
 
 	// each line is a settings value
 	for lineScanner.Scan() {
 		line := lineScanner.Text()
 
 		// split line by spaces
-		tokens = re_spaces.Split(line, max_tokens)
+		tokens := re_spaces.Split(line, max_tokens)
 
 		switch len(tokens) {
 
@@ -69,15 +68,15 @@ func ReadSettings(reader io.Reader) (*Settings, error) {
 			value := tokens[1]
 
 			// get env if prefix
-			envValue := ExtractEnvIfPrefix(value, ENV_PREFIX)
+			envValue, prefixPresent := ExtractEnvIfPrefix(value, ENV_PREFIX)
 			// empty string indicates undefined env variable.  Config specifies
 			// no default,  so it's required and we should throw an error
-			if envValue == "" {
+			if envValue == "" && prefixPresent {
 				err := errors.New("Environment variable is undefined:\t" + value)
 				return nil, err
 			}
 
-			if envValue == nil {
+			if !prefixPresent {
 				settings[key] = value
 			} else {
 				settings[key] = envValue
@@ -90,11 +89,12 @@ func ReadSettings(reader io.Reader) (*Settings, error) {
 			valueDefault := tokens[2]
 
 			// get env if prefix
-			envValue := ExtractEnvIfPrefix(envKey, ENV_PREFIX)
+			envValue, prefixPresent := ExtractEnvIfPrefix(envKey, ENV_PREFIX)
 			// if nil, then there wasn't a prefix, meaning it was an illegal
 			// triple
-			if envValue == nil {
+			if !prefixPresent && envValue == "" {
 				err := errors.New("Default provided for a literal string:\t" + line)
+				return nil, err
 			} else if envValue == "" {
 				envValue = valueDefault
 			}
@@ -102,27 +102,27 @@ func ReadSettings(reader io.Reader) (*Settings, error) {
 			settings[key] = envValue
 		}
 	}
+
+	return &settings, nil
 }
 
-// Get an env variable if the key starts with a prefix. It returns a nil if
-// the prefix is not present, otherwise it returns the environment variable.
-// If the prefix is present but the variable is undefined, it returns an empty
-// string.
-func ExtractEnvIfPrefix(envKey string, envPrefix string) string {
-
+// Get an env variable if the key starts with a prefix.  Returns the extracted 
+// variable, as well as a boolean indicating whether the prefix was present.
+func ExtractEnvIfPrefix(envKey string, envPrefix string) (string, bool) {
+	var prefix string
 	// check for environment prefix
 	prefixLen := len(envPrefix)
-	if len(envKey) >= prefix_len {
-		prefix := envKey[0:prefix_len]
+	if len(envKey) >= prefixLen {
+		prefix = envKey[0:prefixLen]
 	} else {
-		prefix := nil
+		prefix = ""
 	}
 
 	// get env variable if prefix present
 	if prefix == envPrefix {
-		return os.GetEnv(envKey[prefixLen:])
+		return os.Getenv(envKey[prefixLen:]), true
 	} else {
-		return nil
+		return "", false
 	}
 
 }
