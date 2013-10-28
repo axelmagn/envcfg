@@ -33,8 +33,8 @@ package envcfg
 import (
 	"bufio"
 	"errors"
-	"io"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -117,7 +117,7 @@ func ReadSettings(reader io.Reader) (map[string]string, error) {
 	return settings, nil
 }
 
-// Get an env variable if the key starts with a prefix.  Returns the extracted 
+// Get an env variable if the key starts with a prefix.  Returns the extracted
 // variable, as well as a boolean indicating whether the prefix was present.
 func ExtractEnvIfPrefix(envKey string, envPrefix string) (string, bool) {
 	var prefix string

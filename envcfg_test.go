@@ -8,18 +8,17 @@ package envcfg_test
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
+	"github.com/axelmagn/envcfg"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
-	"io/ioutil"
-	"fmt"
-	"github.com/axelmagn/envcfg"
-);
+)
 
 var setValue string = "TEST"
 
 var settings map[string]string
-
 
 func randString() string {
 	randInt := rand.Int63()
@@ -63,7 +62,7 @@ func TestExtractEnvIfPrefix_UndefinedEnv(t *testing.T) {
 	}
 }
 
-func TestExtractEnvIfPrefix_NoPrefix(t *testing.T)	{
+func TestExtractEnvIfPrefix_NoPrefix(t *testing.T) {
 	// set envKey as a random alphanumeric string
 	envKey := randString()
 	envValue, prefixPresent := envcfg.ExtractEnvIfPrefix(envKey, envcfg.ENV_PREFIX)
@@ -110,7 +109,7 @@ func TestReadSettings(t *testing.T) {
 	}
 	cfgFileName := cfgFile.Name()
 
-	// open sample file 
+	// open sample file
 	cfgFile, err = os.Open(cfgFileName)
 	if err != nil {
 		t.Errorf("Error while opening temp settings file for reading: %s", err.Error())
@@ -139,15 +138,15 @@ func ExampleReadSettings_ValueLiteral() {
 
 func ExampleReadSettings_EnvKey() {
 	fmt.Println(settings["EKKEY"])
-	// Output: ek_value 
+	// Output: ek_value
 }
 
 func ExampleReadSettings_EnvKeyDefault() {
 	fmt.Println(settings["EKDKEY"])
-	// Output: ekd_value 
+	// Output: ekd_value
 }
 
 func ExampleReadSettings_EnvKeyDefaultUndefined() {
 	fmt.Println(settings["EKUKEY"])
-	// Output: eku_default 
+	// Output: eku_default
 }
